@@ -151,19 +151,21 @@
             { bg: 'bg-orange-600/80', border: 'border-orange-400', text: 'text-orange-100' }
         ];
 
-        function addPiece(w = null, l = null, q = 1) {
-            const width = w || parseFloat(document.getElementById('pieceWidth').value);
-            const length = l || parseFloat(document.getElementById('pieceLength').value);
-            const qty = q || parseInt(document.getElementById('pieceQty').value);
+        function addPiece(customW = null, customL = null, customQ = null) {
+            const width = customW !== null ? customW : parseFloat(document.getElementById('pieceWidth').value);
+            const length = customL !== null ? customL : parseFloat(document.getElementById('pieceLength').value);
+            const qty = customQ !== null ? customQ : parseInt(document.getElementById('pieceQty').value);
 
             if (!width || !length || !qty || width <= 0 || length <= 0 || qty <= 0) {
-                if(!w) alert("Por favor, ingresá valores válidos mayores a 0.");
+                if (customW === null) alert("Por favor, ingresá valores válidos mayores a 0.");
                 return;
             }
 
             piecesList.push({ width, length, quantity: qty });
             renderTable();
-            if(!w) {
+
+            // Limpiar campos solo si se cargó manualmente
+            if (customW === null) {
                 document.getElementById('pieceWidth').value = '';
                 document.getElementById('pieceLength').value = '';
                 document.getElementById('pieceQty').value = '1';
@@ -187,7 +189,7 @@
                     <tr class="hover:bg-slate-800/50 transition">
                         <td class="px-4 py-3 text-slate-200">${p.width} cm</td>
                         <td class="px-4 py-3 text-slate-200">${p.length} cm</td>
-                        <td class="px-4 py-3 text-slate-200">${p.quantity}</td>
+                        <td class="px-4 py-3 text-slate-200 font-bold text-indigo-300">${p.quantity}</td>
                         <td class="px-4 py-3 text-right">
                             <button onclick="removePiece(${index})" class="text-rose-400 hover:text-rose-300 font-medium text-xs bg-rose-500/10 px-2.5 py-1 rounded-lg border border-rose-500/20">Eliminar</button>
                         </td>
@@ -297,7 +299,6 @@
                 }
             });
 
-            // Validar contra el largo disponible del rollo si fue especificado
             if (rollLengthCm > 0 && maxTotalLength > rollLengthCm) {
                 alert(`¡Advertencia! Las piezas requieren ${maxTotalLength} cm (${(maxTotalLength/100).toFixed(2)} m), pero el rollo tiene configurados ${rollLengthMeters} metros.`);
             }
