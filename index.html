@@ -6,8 +6,10 @@
     <title>Optimizador Pro de Cortes de Tela</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Tesseract.js para leer texto de fotos (OCR) -->
+    <!-- Tesseract.js para OCR -->
     <script src="https://unpkg.com/tesseract.js@v4.0.2/dist/tesseract.min.js"></script>
+    <!-- html2canvas para descargar el plano como imagen -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
@@ -19,7 +21,7 @@
         <!-- Encabezado -->
         <div class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-slate-700 pb-4">
             <div>
-                <h1 class="text-2xl md:text-3xl font-bold text-indigo-400">Optimizador de Cortes</h1>
+                <h1 class="text-2xl md:text-3xl font-bold text-indigo-400">Optimizador de Cortes de Tela</h1>
                 <p class="text-slate-400 text-sm">Gestión inteligente de pañol y reducción de desperdicios</p>
             </div>
             <div class="mt-4 md:mt-0 bg-slate-700/50 px-4 py-2 rounded-xl border border-slate-600 flex items-center space-x-2">
@@ -30,23 +32,19 @@
 
         <!-- Panel de Configuración y Escaneo -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-            
             <!-- Configuración del Rollo -->
             <div class="bg-slate-700/30 p-5 rounded-xl border border-slate-700">
                 <h2 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider mb-4">1. Medidas del Rollo</h2>
-                <div class="space-y-4">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-300 mb-1">Ancho del Rollo (cm):</label>
-                        <input type="number" id="rollWidth" value="150" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none">
-                    </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Ancho del Rollo (cm):</label>
+                    <input type="number" id="rollWidth" value="150" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none">
                 </div>
             </div>
 
             <!-- Escáner IA por Foto -->
             <div class="lg:col-span-2 bg-gradient-to-r from-indigo-950/40 to-slate-700/30 p-5 rounded-xl border border-indigo-500/30">
                 <h2 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider mb-2">📸 Escanear Anotación con Foto (IA)</h2>
-                <p class="text-xs text-slate-400 mb-4">Sacá una foto clara a tus anotaciones en papel. La IA intentará extraer los números (Ancho x Largo x Cantidad).</p>
-                
+                <p class="text-xs text-slate-400 mb-4">Sacá una foto clara a tus anotaciones en papel para extraer los datos automáticamente.</p>
                 <div class="flex flex-col sm:flex-row items-center gap-3">
                     <label class="w-full sm:w-auto cursor-pointer bg-indigo-600 hover:bg-indigo-500 text-white font-medium py-2.5 px-5 rounded-xl shadow-lg transition flex items-center justify-center space-x-2 text-sm">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
@@ -90,9 +88,7 @@
                             <th class="px-4 py-3 text-right">Acción</th>
                         </tr>
                     </thead>
-                    <tbody id="piecesTableBody" class="divide-y divide-slate-800 text-sm">
-                        <!-- Dinámico -->
-                    </tbody>
+                    <tbody id="piecesTableBody" class="divide-y divide-slate-800 text-sm"></tbody>
                 </table>
             </div>
         </div>
@@ -104,18 +100,38 @@
 
         <!-- Resultados -->
         <div id="resultsContainer" class="hidden space-y-6">
-            <h2 class="text-xl font-bold text-white border-b border-slate-700 pb-2">Plan de Corte Optimizado</h2>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-700 pb-3 gap-3">
+                <h2 class="text-xl font-bold text-white">Plan de Corte Optimizado</h2>
+                <button onclick="downloadCanvasImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-4 rounded-lg shadow transition flex items-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                    <span>Descargar Plano como Imagen</span>
+                </button>
+            </div>
+
             <div id="summaryStats" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
             
             <div class="border border-slate-700 rounded-xl p-5 bg-slate-900/60 overflow-x-auto">
-                <h3 class="font-semibold mb-3 text-sm text-indigo-300">Representación Gráfica del Rollo:</h3>
-                <div id="canvasContainer" class="relative bg-slate-950 border border-slate-700 rounded-lg min-h-[250px] overflow-hidden"></div>
+                <h3 class="font-semibold mb-3 text-sm text-indigo-300">Representación Gráfica del Rollo (Con Colores y Medidas):</h3>
+                <!-- Contenedor que se descargará -->
+                <div id="captureArea" class="bg-slate-950 p-4 rounded-lg border border-slate-700">
+                    <div class="text-xs text-slate-400 mb-2 font-medium">Ancho del Rollo: <span id="labelRollWidth" class="text-white font-bold">150</span> cm</div>
+                    <div id="canvasContainer" class="relative bg-slate-900 border border-slate-600 min-h-[250px] overflow-hidden"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
         let piecesList = [];
+        const colorPalette = [
+            { bg: 'bg-blue-600/80', border: 'border-blue-400', text: 'text-blue-100' },
+            { bg: 'bg-emerald-600/80', border: 'border-emerald-400', text: 'text-emerald-100' },
+            { bg: 'bg-amber-600/80', border: 'border-amber-400', text: 'text-amber-100' },
+            { bg: 'bg-purple-600/80', border: 'border-purple-400', text: 'text-purple-100' },
+            { bg: 'bg-rose-600/80', border: 'border-rose-400', text: 'text-rose-100' },
+            { bg: 'bg-cyan-600/80', border: 'border-cyan-400', text: 'text-cyan-100' },
+            { bg: 'bg-orange-600/80', border: 'border-orange-400', text: 'text-orange-100' }
+        ];
 
         function addPiece(w = null, l = null, q = 1) {
             const width = w || parseFloat(document.getElementById('pieceWidth').value);
@@ -163,11 +179,9 @@
         }
         renderTable();
 
-        // Lógica de Reconocimiento de Imagen (OCR con Tesseract)
         async function processImage(event) {
             const file = event.target.files[0];
             if (!file) return;
-
             const statusDiv = document.getElementById('ocrStatus');
             statusDiv.innerText = "Leyendo foto y detectando números...";
 
@@ -179,9 +193,7 @@
                         }
                     }
                 });
-
-                const text = result.data.text;
-                parseScannedText(text);
+                parseScannedText(result.data.text);
                 statusDiv.innerText = "¡Lectura completada con éxito!";
                 setTimeout(() => statusDiv.innerText = "", 4000);
             } catch (error) {
@@ -190,12 +202,9 @@
             }
         }
 
-        // Intenta extraer números agrupados de la foto leída
         function parseScannedText(text) {
-            // Busca patrones de números en el texto escaneado
             const lines = text.split('\n');
             let addedCount = 0;
-
             lines.forEach(line => {
                 const numbers = line.match(/\d+/g);
                 if (numbers && numbers.length >= 2) {
@@ -208,9 +217,8 @@
                     }
                 }
             });
-
             if (addedCount === 0) {
-                alert("No se pudieron detectar medidas claras automáticamente. Podés cargarlas de forma manual abajo.");
+                alert("No se pudieron detectar medidas claras automáticamente.");
             }
         }
 
@@ -221,10 +229,22 @@
             }
 
             const rollWidth = parseFloat(document.getElementById('rollWidth').value);
+            document.getElementById('labelRollWidth').innerText = rollWidth;
+
             let expandedPieces = [];
+            let uniqueTypeIndex = 0;
+            
+            // Asignar un color fijo a cada tipo de pieza única según sus medidas
+            let typeColorMap = {};
+
             piecesList.forEach(p => {
+                let key = `${p.width}-${p.length}`;
+                if (!typeColorMap[key]) {
+                    typeColorMap[key] = colorPalette[uniqueTypeIndex % colorPalette.length];
+                    uniqueTypeIndex++;
+                }
                 for (let i = 0; i < p.quantity; i++) {
-                    expandedPieces.push({ w: p.width, l: p.length });
+                    expandedPieces.push({ w: p.width, l: p.length, style: typeColorMap[key] });
                 }
             });
 
@@ -239,7 +259,7 @@
                 for (let shelf of shelves) {
                     let currentShelfWidthUsed = shelf.pieces.reduce((sum, p) => sum + p.w, 0);
                     if (shelf.maxHeight >= piece.l && (rollWidth - currentShelfWidthUsed) >= piece.w) {
-                        shelf.pieces.push({ w: piece.w, l: piece.l, x: currentShelfWidthUsed, y: shelf.y });
+                        shelf.pieces.push({ w: piece.w, l: piece.l, x: currentShelfWidthUsed, y: shelf.y, style: piece.style });
                         placed = true;
                         break;
                     }
@@ -249,7 +269,7 @@
                     let newShelf = {
                         y: currentY,
                         maxHeight: piece.l,
-                        pieces: [{ w: piece.w, l: piece.l, x: 0, y: currentY }]
+                        pieces: [{ w: piece.w, l: piece.l, x: 0, y: currentY, style: piece.style }]
                     };
                     shelves.push(newShelf);
                     currentY += piece.l;
@@ -286,14 +306,25 @@
             shelves.forEach(shelf => {
                 shelf.pieces.forEach(p => {
                     let div = document.createElement('div');
-                    div.className = 'absolute border border-indigo-400/40 bg-indigo-600/30 hover:bg-indigo-600/50 transition flex items-center justify-center text-xs font-bold text-indigo-200 overflow-hidden rounded';
+                    div.className = `absolute border-2 ${p.style.border} ${p.style.bg} flex flex-col items-center justify-center text-xs font-bold ${p.style.text} overflow-hidden rounded shadow-sm`;
                     div.style.left = `${p.x * scale}px`;
                     div.style.top = `${p.y * scale}px`;
                     div.style.width = `${p.w * scale}px`;
                     div.style.height = `${p.l * scale}px`;
-                    div.innerHTML = `<span class="truncate px-1">${p.w}x${p.l}</span>`;
+                    div.innerHTML = `<span class="px-1 bg-slate-900/60 rounded text-[10px]">${p.w} x ${p.l} cm</span>`;
                     canvasContainer.appendChild(div);
                 });
+            });
+        }
+
+        // Función para descargar el plano como imagen PNG
+        function downloadCanvasImage() {
+            const captureElement = document.getElementById('captureArea');
+            html2canvas(captureElement, { scale: 2, backgroundColor: '#020617' }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'plan-de-cortes-tela.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
             });
         }
     </script>
