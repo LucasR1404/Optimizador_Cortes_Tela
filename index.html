@@ -13,6 +13,11 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
+        @media print {
+            body { background: white !important; color: black !important; }
+            .no-print { display: none !important; }
+            #captureArea { background: white !important; border: 1px solid #ccc !important; }
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 min-h-screen p-4 md:p-8">
@@ -31,13 +36,17 @@
         </div>
 
         <!-- Panel de Configuración y Escaneo -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 no-print">
             <!-- Configuración del Rollo -->
-            <div class="bg-slate-700/30 p-5 rounded-xl border border-slate-700">
-                <h2 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider mb-4">1. Medidas del Rollo</h2>
+            <div class="bg-slate-700/30 p-5 rounded-xl border border-slate-700 space-y-4">
+                <h2 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider mb-2">1. Medidas del Rollo</h2>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Ancho del Rollo (cm):</label>
                     <input type="number" id="rollWidth" value="150" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Largo del Rollo (metros):</label>
+                    <input type="number" id="rollLengthMeters" value="50" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: 50">
                 </div>
             </div>
 
@@ -57,7 +66,7 @@
         </div>
 
         <!-- Carga Manual de Piezas -->
-        <div class="bg-slate-700/30 p-5 rounded-xl border border-slate-700 mb-8">
+        <div class="bg-slate-700/30 p-5 rounded-xl border border-slate-700 mb-8 no-print">
             <h2 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider mb-4">2. Agregar Piezas a Cortar</h2>
             <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
                 <div>
@@ -93,28 +102,37 @@
             </div>
         </div>
 
-        <button onclick="calculateOptimization()" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-xl text-lg transition mb-8 flex items-center justify-center space-x-2">
+        <button onclick="calculateOptimization()" class="no-print w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3.5 px-4 rounded-xl shadow-xl text-lg transition mb-8 flex items-center justify-center space-x-2">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
             <span>Generar Plan de Corte y Plano Visual</span>
         </button>
 
         <!-- Resultados -->
         <div id="resultsContainer" class="hidden space-y-6">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-700 pb-3 gap-3">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-700 pb-3 gap-3 no-print">
                 <h2 class="text-xl font-bold text-white">Plan de Corte Optimizado</h2>
-                <button onclick="downloadCanvasImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-4 rounded-lg shadow transition flex items-center space-x-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    <span>Descargar Plano como Imagen</span>
-                </button>
+                <div class="flex gap-2">
+                    <button onclick="window.print()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2 px-4 rounded-lg shadow transition flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+                        <span>Imprimir Plano</span>
+                    </button>
+                    <button onclick="downloadCanvasImage()" class="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold py-2 px-4 rounded-lg shadow transition flex items-center space-x-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+                        <span>Descargar Imagen</span>
+                    </button>
+                </div>
             </div>
 
             <div id="summaryStats" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
             
             <div class="border border-slate-700 rounded-xl p-5 bg-slate-900/60 overflow-x-auto">
-                <h3 class="font-semibold mb-3 text-sm text-indigo-300">Representación Gráfica del Rollo (Con Colores y Medidas):</h3>
-                <!-- Contenedor que se descargará -->
+                <h3 class="font-semibold mb-3 text-sm text-indigo-300">Representación Gráfica del Rollo:</h3>
+                <!-- Contenedor a imprimir/descargar -->
                 <div id="captureArea" class="bg-slate-950 p-4 rounded-lg border border-slate-700">
-                    <div class="text-xs text-slate-400 mb-2 font-medium">Ancho del Rollo: <span id="labelRollWidth" class="text-white font-bold">150</span> cm</div>
+                    <div class="text-xs text-slate-400 mb-3 font-medium flex justify-between">
+                        <span>Ancho del Rollo: <strong class="text-white" id="labelRollWidth">150</strong> cm</span>
+                        <span>Largo Disponible: <strong class="text-white" id="labelRollTotalMeters">0</strong> m</span>
+                    </div>
                     <div id="canvasContainer" class="relative bg-slate-900 border border-slate-600 min-h-[250px] overflow-hidden"></div>
                 </div>
             </div>
@@ -229,12 +247,14 @@
             }
 
             const rollWidth = parseFloat(document.getElementById('rollWidth').value);
+            const rollLengthMeters = parseFloat(document.getElementById('rollLengthMeters').value) || 0;
+            const rollLengthCm = rollLengthMeters * 100;
+
             document.getElementById('labelRollWidth').innerText = rollWidth;
+            document.getElementById('labelRollTotalMeters').innerText = rollLengthMeters;
 
             let expandedPieces = [];
             let uniqueTypeIndex = 0;
-            
-            // Asignar un color fijo a cada tipo de pieza única según sus medidas
             let typeColorMap = {};
 
             piecesList.forEach(p => {
@@ -277,6 +297,11 @@
                 }
             });
 
+            // Validar contra el largo disponible del rollo si fue especificado
+            if (rollLengthCm > 0 && maxTotalLength > rollLengthCm) {
+                alert(`¡Advertencia! Las piezas requieren ${maxTotalLength} cm (${(maxTotalLength/100).toFixed(2)} m), pero el rollo tiene configurados ${rollLengthMeters} metros.`);
+            }
+
             renderResults(shelves, maxTotalLength, rollWidth, expandedPieces);
         }
 
@@ -288,9 +313,10 @@
             let totalPieceArea = allPieces.reduce((sum, p) => sum + (p.w * p.l), 0);
             let totalUsedArea = rollWidth * totalLengthNeeded;
             let efficiency = totalUsedArea > 0 ? ((totalPieceArea / totalUsedArea) * 100).toFixed(1) : 0;
+            let metersNeeded = (totalLengthNeeded / 100).toFixed(2);
 
             statsContainer.innerHTML = `
-                <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl"><span class="block text-xs text-indigo-400 font-semibold mb-1">Largo Total de Tela:</span><span class="text-2xl font-bold text-white">${totalLengthNeeded} cm</span></div>
+                <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl"><span class="block text-xs text-indigo-400 font-semibold mb-1">Metros de Tela Necesarios:</span><span class="text-2xl font-bold text-white">${metersNeeded} m <span class="text-sm font-normal text-slate-400">(${totalLengthNeeded} cm)</span></span></div>
                 <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl"><span class="block text-xs text-emerald-400 font-semibold mb-1">Eficiencia de Corte:</span><span class="text-2xl font-bold text-white">${efficiency}%</span></div>
                 <div class="bg-slate-800 border border-slate-700 p-4 rounded-xl"><span class="block text-xs text-blue-400 font-semibold mb-1">Piezas Totales:</span><span class="text-2xl font-bold text-white">${allPieces.length}</span></div>
             `;
@@ -317,7 +343,6 @@
             });
         }
 
-        // Función para descargar el plano como imagen PNG
         function downloadCanvasImage() {
             const captureElement = document.getElementById('captureArea');
             html2canvas(captureElement, { scale: 2, backgroundColor: '#020617' }).then(canvas => {
