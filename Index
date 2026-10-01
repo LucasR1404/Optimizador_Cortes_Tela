@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Optimizador de Cortes de Tela</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 text-gray-800 min-h-screen p-4 md:p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-xl shadow-md overflow-hidden p-6">
+        <h1 class="text-2xl font-bold text-indigo-600 mb-4 text-center">Optimizador de Cortes de Tela</h1>
+        
+        <!-- Configuración del Rollo -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6 bg-indigo-50 p-4 rounded-lg">
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Ancho del Rollo (cm):</label>
+                <input type="number" id="rollWidth" value="150" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold text-gray-700">Largo Máximo Disponible (cm) [Opcional]:</label>
+                <input type="number" id="rollLength" value="10000" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+            </div>
+        </div>
+
+        <!-- Agregar Piezas -->
+        <div class="mb-6 bg-gray-50 p-4 rounded-lg border">
+            <h2 class="text-lg font-semibold mb-3">Piezas a Cortar</h2>
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Ancho (cm):</label>
+                    <input type="number" id="pieceWidth" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="Ej: 50">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Largo (cm):</label>
+                    <input type="number" id="pieceLength" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" placeholder="Ej: 100">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-gray-600">Cantidad:</label>
+                    <input type="number" id="pieceQty" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border" value="1">
+                </div>
+                <div class="flex items-end">
+                    <button onclick="addPiece()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow">Agregar Pieza</button>
+                </div>
+            </div>
+
+            <!-- Tabla de piezas cargadas -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 bg-white rounded shadow-sm">
+                    <thead class="bg-gray-100">
+                        <tr>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Ancho</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Largo</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Cant.</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="piecesTableBody" class="divide-y divide-gray-200 text-sm">
+                        <!-- Dinámico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <button onclick="calculateOptimization()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg shadow-lg text-lg mb-6">Calcular y Optimizar Cortes</button>
+
+        <!-- Resultados -->
+        <div id="resultsContainer" class="hidden">
+            <h2 class="text-xl font-bold mb-3 text-gray-800">Plan de Corte</h2>
+            <div id="summaryStats" class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4"></div>
+            <div class="border rounded-lg p-4 bg-gray-50 overflow-x-auto">
+                <h3 class="font-semibold mb-2 text-sm text-gray-600">Representación Gráfica del Rollo:</h3>
+                <div id="canvasContainer" class="relative bg-white border border-gray-300 min-h-[200px]"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let piecesList = [];
+
+        function addPiece() {
+            const w = parseFloat(document.getElementById('pieceWidth').value);
+            const l = parseFloat(document.getElementById('pieceLength').value);
+            const q = parseInt(document.getElementById('pieceQty').value);
+
+            if (!w || !l || !q || w <= 0 || l <= 0 || q <= 0) {
+                alert("Por favor, ingresá valores válidos mayores a 0.");
+                return;
+            }
+
+            piecesList.push({ width: w, length: l, quantity: q });
+            renderTable();
+            document.getElementById('pieceWidth').value = '';
+            document.getElementById('pieceLength').value = '';
+            document.getElementById('pieceQty').value = '1';
+        }
+
+        function removePiece(index) {
+            piecesList.splice(index, 1);
+            renderTable();
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('piecesTableBody');
+            tbody.innerHTML = '';
+            piecesList.forEach((p, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td class="px-4 py-2">${p.width} cm</td>
+                        <td class="px-4 py-2">${p.length} cm</td>
+                        <td class="px-4 py-2">${p.quantity}</td>
+                        <td class="px-4 py-2 text-right">
+                            <button onclick="removePiece(${index})" class="text-red-600 hover:text-red-900 font-semibold">Eliminar</button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function calculateOptimization() {
+            if (piecesList.length === 0) {
+                alert("Agregá al menos una pieza para calcular.");
+                return;
+            }
+
+            const rollWidth = parseFloat(document.getElementById('rollWidth').value);
+            
+            // Expandir piezas individuales
+            let expandedPieces = [];
+            piecesList.forEach(p => {
+                for (let i = 0; i < p.quantity; i++) {
+                    expandedPieces.push({ w: p.width, l: p.length });
+                }
+            });
+
+            // Ordenar por alto descendiente (First Fit Decreasing Height)
+            expandedPieces.sort((a, b) => b.l - a.l);
+
+            let shelves = []; // Cada estante tiene un y, alto max, y listado de piezas colocadas con x
+            let currentY = 0;
+            let maxTotalLength = 0;
+
+            expandedPieces.forEach(piece => {
+                let placed = false;
+                // Intentar ubicar en un estante existente
+                for (let shelf of shelves) {
+                    let currentShelfWidthUsed = shelf.pieces.reduce((sum, p) => sum + p.w, 0);
+                    if (shelf.maxHeight >= piece.l && (rollWidth - currentShelfWidthUsed) >= piece.w) {
+                        shelf.pieces.push({ w: piece.w, l: piece.l, x: currentShelfWidthUsed, y: shelf.y });
+                        placed = true;
+                        break;
+                    }
+                }
+
+                // Si no entra en ningún estante, crear uno nuevo
+                if (!placed) {
+                    let newShelf = {
+                        y: currentY,
+                        maxHeight: piece.l,
+                        pieces: [{ w: piece.w, l: piece.l, x: 0, y: currentY }]
+                    };
+                    shelves.push(newShelf);
+                    currentY += piece.l;
+                    maxTotalLength = currentY;
+                }
+            });
+
+            renderResults(shelves, maxTotalLength, rollWidth, expandedPieces);
+        }
+
+        function renderResults(shelves, totalLengthNeeded, rollWidth, allPieces) {
+            const container = document.getElementById('resultsContainer');
+            container.classList.remove('hidden');
+
+            const statsContainer = document['getElementById']('summaryStats');
+            
+            let totalPieceArea = allPieces.reduce((sum, p) => sum + (p.w * p.l), 0);
+            let totalUsedArea = rollWidth * totalLengthNeeded;
+            let efficiency = totalUsedArea > 0 ? ((totalPieceArea / totalUsedArea) * 100).toFixed(1) : 0;
+
+            statsContainer.innerHTML = `
+                <div class="bg-indigo-100 p-3 rounded-lg"><span class="block text-xs text-indigo-800 font-semibold">Largo Total de Tela Usado:</span><span class="text-xl font-bold text-indigo-900">${totalLengthNeeded} cm</span></div>
+                <div class="bg-green-100 p-3 rounded-lg"><span class="block text-xs text-green-800 font-semibold">Eficiencia de Corte:</span><span class="text-xl font-bold text-green-900">${efficiency}%</span></div>
+                <div class="bg-blue-100 p-3 rounded-lg"><span class="block text-xs text-blue-800 font-semibold">Piezas Totales:</span><span class="text-xl font-bold text-blue-900">${allPieces.length}</span></div>
+            `;
+
+            const canvasContainer = document.getElementById('canvasContainer');
+            // Escalar dinámicamente el ancho visual
+            let displayWidth = canvasContainer.clientWidth || 600;
+            let scale = displayWidth / rollWidth;
+            let displayHeight = totalLengthNeeded * scale;
+
+            canvasContainer.style.height = `${displayHeight}px`;
+            canvasContainer.innerHTML = '';
+
+            shelves.forEach(shelf => {
+                shelf.pieces.forEach(p => {
+                    let div = document.createElement('div');
+                    div.className = 'absolute border border-indigo-900 bg-indigo-200 bg-opacity-75 flex items-center justify-center text-xs font-bold text-indigo-900 overflow-hidden';
+                    div.style.left = `${p.x * scale}px`;
+                    div.style.top = `${p.y * scale}px`;
+                    div.style.width = `${p.w * scale}px`;
+                    div.style.height = `${p.l * scale}px`;
+                    div.innerHTML = `<span class="truncate px-1">${p.w}x${p.l}</span>`;
+                    canvasContainer.appendChild(div);
+                });
+            });
+        }
+    </script>
+</body>
+</html>
+
+Creame un enlace con este archivo para descargar por favor 
