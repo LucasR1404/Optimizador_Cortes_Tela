@@ -276,23 +276,24 @@
                 }
             });
 
-            // Preparar las orientaciones permitidas según el tipo de tela
             let itemsToPlace = [];
             expandedPieces.forEach((p, idx) => {
                 let orientations = [];
                 
-                // Siempre permitimos la orientación original (Ancho x Largo tal cual se ingresó)
-                orientations.push({ w: p.w, l: p.l, rotated: false });
-
-                // Solo si es tela lisa permitimos rotar 90 grados
-                if (fabricType === 'lisa' && p.l <= rollWidth && p.w <= rollWidth && (p.w !== p.l)) {
-                    orientations.push({ w: p.l, l: p.w, rotated: true });
+                // Si es tela con peine, la orientación es estricta: Ancho de pieza sobre ancho de rollo, largo sobre largo. NUNCA rota.
+                if (fabricType === 'peine') {
+                    orientations.push({ w: p.w, l: p.l, rotated: false });
+                } else {
+                    // Si es lisa, permitimos orientación original y su rotación
+                    orientations.push({ w: p.w, l: p.l, rotated: false });
+                    if (p.l <= rollWidth && p.w <= rollWidth && (p.w !== p.l)) {
+                        orientations.push({ w: p.l, l: p.w, rotated: true });
+                    }
                 }
 
                 itemsToPlace.push({ id: idx, orientations: orientations, area: p.area, style: p.style });
             });
 
-            // Ordenar por área descendente
             itemsToPlace.sort((a, b) => b.area - a.area);
 
             let successfullyPlaced = [];
@@ -313,8 +314,9 @@
                 let bestOrientation = null;
                 let placed = false;
 
-                // Probar cada orientación permitida
                 for (let ori of item.orientations) {
+                    if (ori.w > rollWidth) continue; // Si el ancho de la pieza supera el ancho del rollo, no entra
+
                     let candidatePoints = [{ x: 0, y: 0 }];
                     successfullyPlaced.forEach(p => {
                         candidatePoints.push({ x: p.x + p.w, y: p.y });
@@ -367,7 +369,7 @@
                         maxTotalLength = bestY + bestOrientation.l;
                     }
                 } else {
-                    alert(`No se pudo ubicar una de las piezas por falta de espacio o ancho excedido.`);
+                    alert(`No se pudo ubicar una pieza de ${item.orientations[0].w}x${item.orientations[0].l} cm. Verificá que no supere el ancho del rollo (${rollWidth} cm).`);
                 }
             });
 
@@ -405,7 +407,7 @@
             canvasContainer.innerHTML = '';
 
             placedPieces.forEach(p => {
-                let div = document.createElement('div');
+                let div = document.exitFullscreen ? document.createElement('div') : document.createElement('div');
                 div.className = `absolute border-2 ${p.style.border} ${p.style.bg} flex flex-col items-center justify-center text-xs font-bold ${p.style.text} overflow-hidden rounded shadow-sm`;
                 div.style.left = `${p.x * scale}px`;
                 div.style.top = `${p.y * scale}px`;
