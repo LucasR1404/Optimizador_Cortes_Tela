@@ -39,7 +39,7 @@
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8 no-print">
             <!-- Configuración del Rollo -->
             <div class="bg-slate-700/30 p-5 rounded-xl border border-slate-700 space-y-4">
-                <h2 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider mb-2">1. Medidas del Rollo</h2>
+                <h2 class="text-sm font-semibold text-indigo-300 uppercase tracking-wider mb-2">1. Medidas y Tipo de Tela</h2>
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Ancho del Rollo (cm):</label>
                     <input type="number" id="rollWidth" value="150" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none">
@@ -47,6 +47,13 @@
                 <div>
                     <label class="block text-xs font-medium text-slate-300 mb-1">Largo del Rollo (metros):</label>
                     <input type="number" id="rollLengthMeters" value="50" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Ej: 50">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">Sentido de la Tela:</label>
+                    <select id="fabricType" class="w-full bg-slate-900 border border-slate-600 rounded-lg p-2.5 text-white focus:ring-2 focus:ring-indigo-500 outline-none text-sm">
+                        <option value="lisa">Tela Lisa / Sin Sentido (Permite rotar)</option>
+                        <option value="peine">Tela con Peine / Sentido Obligatorio (Sin rotar)</option>
+                    </select>
                 </div>
             </div>
 
@@ -241,7 +248,6 @@
             }
         }
 
-        // Algoritmo de Optimización Avanzada por Coordenadas Libres (Bottom-Left / Max-Rects)
         function calculateOptimization() {
             if (piecesList.length === 0) {
                 alert("Agregá al menos una pieza para calcular.");
@@ -251,6 +257,7 @@
             const rollWidth = parseFloat(document.getElementById('rollWidth').value);
             const rollLengthMeters = parseFloat(document.getElementById('rollLengthMeters').value) || 0;
             const rollLengthCm = rollLengthMeters * 100;
+            const fabricType = document.getElementById('fabricType').value; // 'lisa' o 'peine'
 
             document.getElementById('labelRollWidth').innerText = rollWidth;
 
@@ -269,85 +276,112 @@
                 }
             });
 
-            // Ordenar por área descendente para ubicar primero las piezas más grandes
-            expandedPieces.sort((a, b) => b.area - a.area);
+            // Si es tela lisa, generamos también variantes rotadas para que el algoritmo elija la que mejor encaje
+            let processedPieces = [];
+            expandedPieces.forEach(p => {
+                processedPieces.push({ w: p.w, l: p.l, style: p.style, area: p.area, rotated: false });
+                
+                // Si es tela lisa, permitimos la opción de rotar 90 grados si entra en el ancho del rollo
+                if (fabricType === 'lisa' && p.l <= rollWidth && p.w <= rollWidth && (p.w !== p.l)) {
+                    processedPieces.push({ w: p.l, l: p.w, style: p.style, area: p.area, rotated: true });
+                }
+            });
+
+            // Ordenar por área descendente
+            processedPieces.sort((a, b) => b.area - a.area);
 
             let placedPieces = [];
             let maxTotalLength = 0;
 
-            // Función para verificar si un rectángulo se superpone con alguno ya colocado
             function checkCollision(x, y, w, l, placed) {
                 for (let p of placed) {
                     if (x < p.x + p.w && x + w > p.x && y < p.y + p.l && y + l > p.y) {
-                        return true; // Hay superposición
+                        return true;
                     }
                 }
                 return false;
             }
 
-            expandedPieces.forEach(piece => {
+            // Para asegurar que si una pieza original se coloca, no coloquemos su versión rotada duplicada,
+            // llevamos un registro de qué piezas ya fueron ubicadas.
+            let usedOriginalIndices = new Set();
+
+            // Como duplicamos piezas para la rotación (en modo liso), agrupamos por ID único de pieza o procesamos con cuidado:
+            // Simplificaremos creando las orientaciones permitidas directamente por cada ítem individual:
+            let itemsToPlace = [];
+            expandedPieces.forEach((p, idx) => {
+                let orientations = [{ w: p.w, l: p.l, rotated: false }];
+                if (fabricType === 'lisa' && p.l <= rollWidth && p.w <= rollWidth && p.w !== p.l) {
+                    orientations.push({ w: p.l, l: p.w, rotated: true });
+                }
+                itemsToPlace.push({ id: idx, orientations: orientations, area: p.area, style: p.style });
+            });
+
+            itemsToPlace.sort((a, b) => b.area - a.area);
+
+            let successfullyPlaced = [];
+
+            itemsToPlace.forEach(item => {
                 let bestX = -1;
                 let bestY = Infinity;
-                let step = 1; // Resolución de búsqueda en cm
-
-                // Generar puntos candidatos basados en esquinas de piezas ya colocadas y el origen (0,0)
-                let candidatePoints = [{ x: 0, y: 0 }];
-                placedPieces.forEach(p => {
-                    candidatePoints.push({ x: p.x + p.w, y: p.y });
-                    candidatePoints.push({ x: p.x, y: p.y + p.l });
-                    candidatePoints.push({ x: p.x + p.w, y: p.y + p.l });
-                });
-
-                // Filtrar puntos dentro de los límites del rollo
-                let validPoints = candidatePoints.filter(pt => pt.x + piece.w <= rollWidth && pt.y >= 0);
-
-                // Ordenar puntos candidatos preferiendo los más altos (menor Y) y más a la izquierda (menor X)
-                validPoints.sort((a, b) => {
-                    if (a.y !== b.y) return a.y - b.y;
-                    return a.x - b.x;
-                });
-
+                let bestOrientation = null;
                 let placed = false;
 
-                // Buscar el primer punto válido sin colisiones
-                for (let pt of validPoints) {
-                    if (!checkCollision(pt.x, pt.y, piece.w, piece.l, placedPieces)) {
-                        bestX = pt.x;
-                        bestY = pt.y;
-                        placed = true;
-                        break;
-                    }
-                }
-
-                // Si no se encontró en esquinas existentes, buscar escaneando línea por línea verticalmente
-                if (!placed) {
-                    for (let y = 0; y <= maxTotalLength + 500; y += 5) {
-                        for (let x = 0; x <= rollWidth - piece.w; x += 5) {
-                            if (!checkCollision(x, y, piece.w, piece.l, placedPieces)) {
-                                bestX = x;
-                                bestY = y;
-                                placed = true;
-                                break;
-                            }
-                        }
-                        if (placed) break;
-                    }
-                }
-
-                if (placed) {
-                    placedPieces.push({
-                        w: piece.w,
-                        l: piece.l,
-                        x: bestX,
-                        y: bestY,
-                        style: piece.style
+                // Probar las orientaciones permitidas
+                for (let ori of item.orientations) {
+                    let candidatePoints = [{ x: 0, y: 0 }];
+                    successfullyPlaced.forEach(p => {
+                        candidatePoints.push({ x: p.x + p.w, y: p.y });
+                        candidatePoints.push({ x: p.x, y: p.y + p.l });
+                        candidatePoints.push({ x: p.x + p.w, y: p.y + p.l });
                     });
 
-                    if (bestY + piece.l > maxTotalLength) {
-                        maxTotalLength = bestY + piece.l;
+                    let validPoints = candidatePoints.filter(pt => pt.x + ori.w <= rollWidth && pt.y >= 0);
+                    validPoints.sort((a, b) => (a.y !== b.y) ? a.y - b.y : a.x - b.x);
+
+                    for (let pt of validPoints) {
+                        if (!checkCollision(pt.x, pt.y, ori.w, ori.l, successfullyPlaced)) {
+                            if (pt.y < bestY || (pt.y === bestY && pt.x < bestX)) {
+                                bestY = pt.y;
+                                bestX = pt.x;
+                                bestOrientation = ori;
+                                placed = true;
+                            }
+                        }
+                    }
+
+                    if (!placed) {
+                        for (let y = 0; y <= maxTotalLength + 500; y += 5) {
+                            for (let x = 0; x <= rollWidth - ori.w; x += 5) {
+                                if (!checkCollision(x, y, ori.w, ori.l, successfullyPlaced)) {
+                                    if (y < bestY || (y === bestY && x < bestX)) {
+                                        bestY = y;
+                                        bestX = x;
+                                        bestOrientation = ori;
+                                        placed = true;
+                                    }
+                                }
+                            }
+                            if (placed) break;
+                        }
+                    }
+                }
+
+                if (placed && bestOrientation) {
+                    successfullyPlaced.push({
+                        w: bestOrientation.w,
+                        l: bestOrientation.l,
+                        x: bestX,
+                        y: bestY,
+                        style: item.style,
+                        rotated: bestOrientation.rotated
+                    });
+
+                    if (bestY + bestOrientation.l > maxTotalLength) {
+                        maxTotalLength = bestY + bestOrientation.l;
                     }
                 } else {
-                    alert(`No se pudo ubicar la pieza de ${piece.w}x${piece.l} cm.`);
+                    alert(`No se pudo ubicar una de las piezas.`);
                 }
             });
 
@@ -355,7 +389,7 @@
                 alert(`¡Advertencia! Las piezas requieren ${maxTotalLength} cm (${(maxTotalLength/100).toFixed(2)} m), pero el rollo tiene configurados ${rollLengthMeters} metros.`);
             }
 
-            renderResults(placedPieces, maxTotalLength, rollWidth, expandedPieces);
+            renderResults(successfullyPlaced, maxTotalLength, rollWidth, expandedPieces);
         }
 
         function renderResults(placedPieces, totalLengthNeeded, rollWidth, allPieces) {
