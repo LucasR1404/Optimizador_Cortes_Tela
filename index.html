@@ -276,21 +276,26 @@
                 }
             });
 
-            // Si es tela lisa, generamos también variantes rotadas para que el algoritmo elija la que mejor encaje
-            let processedPieces = [];
-            expandedPieces.forEach(p => {
-                processedPieces.push({ w: p.w, l: p.l, style: p.style, area: p.area, rotated: false });
+            // Preparar las orientaciones permitidas según el tipo de tela
+            let itemsToPlace = [];
+            expandedPieces.forEach((p, idx) => {
+                let orientations = [];
                 
-                // Si es tela lisa, permitimos la opción de rotar 90 grados si entra en el ancho del rollo
+                // Siempre permitimos la orientación original (Ancho x Largo tal cual se ingresó)
+                orientations.push({ w: p.w, l: p.l, rotated: false });
+
+                // Solo si es tela lisa permitimos rotar 90 grados
                 if (fabricType === 'lisa' && p.l <= rollWidth && p.w <= rollWidth && (p.w !== p.l)) {
-                    processedPieces.push({ w: p.l, l: p.w, style: p.style, area: p.area, rotated: true });
+                    orientations.push({ w: p.l, l: p.w, rotated: true });
                 }
+
+                itemsToPlace.push({ id: idx, orientations: orientations, area: p.area, style: p.style });
             });
 
             // Ordenar por área descendente
-            processedPieces.sort((a, b) => b.area - a.area);
+            itemsToPlace.sort((a, b) => b.area - a.area);
 
-            let placedPieces = [];
+            let successfullyPlaced = [];
             let maxTotalLength = 0;
 
             function checkCollision(x, y, w, l, placed) {
@@ -302,32 +307,13 @@
                 return false;
             }
 
-            // Para asegurar que si una pieza original se coloca, no coloquemos su versión rotada duplicada,
-            // llevamos un registro de qué piezas ya fueron ubicadas.
-            let usedOriginalIndices = new Set();
-
-            // Como duplicamos piezas para la rotación (en modo liso), agrupamos por ID único de pieza o procesamos con cuidado:
-            // Simplificaremos creando las orientaciones permitidas directamente por cada ítem individual:
-            let itemsToPlace = [];
-            expandedPieces.forEach((p, idx) => {
-                let orientations = [{ w: p.w, l: p.l, rotated: false }];
-                if (fabricType === 'lisa' && p.l <= rollWidth && p.w <= rollWidth && p.w !== p.l) {
-                    orientations.push({ w: p.l, l: p.w, rotated: true });
-                }
-                itemsToPlace.push({ id: idx, orientations: orientations, area: p.area, style: p.style });
-            });
-
-            itemsToPlace.sort((a, b) => b.area - a.area);
-
-            let successfullyPlaced = [];
-
             itemsToPlace.forEach(item => {
                 let bestX = -1;
                 let bestY = Infinity;
                 let bestOrientation = null;
                 let placed = false;
 
-                // Probar las orientaciones permitidas
+                // Probar cada orientación permitida
                 for (let ori of item.orientations) {
                     let candidatePoints = [{ x: 0, y: 0 }];
                     successfullyPlaced.forEach(p => {
@@ -381,7 +367,7 @@
                         maxTotalLength = bestY + bestOrientation.l;
                     }
                 } else {
-                    alert(`No se pudo ubicar una de las piezas.`);
+                    alert(`No se pudo ubicar una de las piezas por falta de espacio o ancho excedido.`);
                 }
             });
 
